@@ -1,55 +1,23 @@
-"""Core commands: /start, /help, /cancel."""
-
-from telegram import Update, ReplyKeyboardRemove
+"""Core commands and user-facing bot metadata."""
+from __future__ import annotations
+from telegram import ReplyKeyboardRemove, Update
 from telegram.ext import ContextTypes
-
-WELCOME = (
-    "👋 *Welcome to UtilityBot!*\n\n"
-    "I'm a small toolbox that lives in your chat. Here's what I can do:\n\n"
-    "🗒 *Notes* — jot things down and get them back later\n"
-    "⏰ *Reminders* — \"remind me in 20m to stretch\"\n"
-    "🌦 *Weather* — current conditions for any city\n"
-    "💱 *Currency* — quick exchange-rate conversions\n\n"
-    "Type /help any time to see the full command list."
-)
-
+WELCOME = "👋 *Welcome to UtilityBot!*\n\nA practical Telegram toolbox for notes, reminders, weather, and currency.\n\nUse /help to see commands, or /about for project details."
 HELP = (
-    "*Commands*\n\n"
-    "*Notes*\n"
-    "`/note <text>` – save a note\n"
-    "`/notes` – list your saved notes\n"
-    "`/delnote <id>` – delete one note\n"
-    "`/clearnotes` – delete all your notes\n\n"
-    "*Reminders*\n"
-    "`/remind <10m|2h|1d> <text>` – set a reminder\n"
-    "`/reminders` – list your pending reminders\n"
-    "`/delreminder <id>` – cancel a reminder\n\n"
-    "*Weather*\n"
-    "`/weather <city>` – current weather for a city\n\n"
-    "*Currency*\n"
-    "`/convert <amount> <from> <to>` – e.g. `/convert 100 USD INR`\n\n"
-    "*Other*\n"
-    "`/help` – show this message\n"
-    "`/cancel` – cancel whatever you were typing"
+    "*UtilityBot commands*\n\n"
+    "*Notes*\n/note <text> — save a note\n/notes — list your notes\n/delnote <id> — delete one note\n/clearnotes — delete all your notes\n\n"
+    "*Reminders*\n/remind <duration> <text> — set a reminder\n/reminders — list pending reminders\n/delreminder <id> — cancel a reminder\n\n"
+    "*Utilities*\n/weather <city> — current weather\n/convert <amount> <from> <to> — e.g. /convert 100 USD INR\n\n"
+    "*Other*\n/start — start the bot\n/help — show help\n/about — show bot information\n/cancel — clear local bot state"
 )
-
-
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    await update.message.reply_markdown(WELCOME)
-
-
+    await update.message.reply_text(WELCOME, parse_mode="Markdown")
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    await update.message.reply_markdown(HELP)
-
-
+    await update.message.reply_text(HELP, parse_mode="Markdown")
+async def about(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    await update.message.reply_text("🤖 *UtilityBot*\n\nPython + python-telegram-bot\nPersistence: SQLite\nScheduling: JobQueue / APScheduler\nDeployment: Docker + long polling", parse_mode="Markdown")
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     context.user_data.clear()
-    await update.message.reply_text(
-        "Cancelled.", reply_markup=ReplyKeyboardRemove()
-    )
-
-
+    await update.message.reply_text("Cancelled.", reply_markup=ReplyKeyboardRemove())
 async def unknown_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    await update.message.reply_text(
-        "I don't recognize that command. Try /help to see what I can do."
-    )
+    await update.message.reply_text("I don't recognize that command. Try /help to see available commands.")
