@@ -1,64 +1,36 @@
-"""
-Small helper for parsing the informal time expressions people actually type,
-e.g. "10m", "2h30m", "1d", "45" (assumed minutes).
-
-Intentionally simple and dependency-free rather than pulling in a full NLP
-date parser -- reminders are the one place in the bot where getting parsing
-wrong silently would be annoying, so this only accepts unambiguous formats
-and raises a clear ValueError otherwise.
-"""
-
+"""Strict parsing helpers for relative reminder durations."""
+from __future__ import annotations
 import re
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
-_PATTERN = re.compile(
-    r"^\s*(?:(?P<days>\d+)d)?\s*(?:(?P<hours>\d+)h)?\s*(?:(?P<minutes>\d+)m)?\s*$",
-    re.IGNORECASE,
-)
-
+_PATTERN = re.compile(r"^(?:(?P<days>\d+)d)?(?:(?P<hours>\d+)h)?(?:(?P<minutes>\d+)m)?$", re.I)
 
 def parse_duration(text: str) -> timedelta:
-    """
-    Parse strings like '10m', '2h', '1d12h', '90' (bare number = minutes)
-    into a timedelta. Raises ValueError on anything it can't confidently parse.
-    """
-    text = text.strip()
-    if text.isdigit():
-        minutes = int(text)
+    raw = text.strip().lower()
+    if raw.isdigit():
+        minutes = int(raw)
         if minutes <= 0:
             raise ValueError("Duration must be positive.")
         return timedelta(minutes=minutes)
-
-    match = _PATTERN.match(text)
+    match = _PATTERN.fullmatch(raw)
     if not match or not any(match.groupdict().values()):
-        raise ValueError(
-            "Couldn't parse that duration. Try formats like 10m, 2h, 1d, or 1d2h30m."
-        )
-
-    parts = {k: int(v) for k, v in match.groupdict().items() if v}
-    delta = timedelta(
-        days=parts.get("days", 0),
-        hours=parts.get("hours", 0),
-        minutes=parts.get("minutes", 0),
-    )
+        raise ValueError("Couldn't parse that duration. Try 10m, 2h, 1d, or 1d2h30m.")
+    delta = timedelta(days=int(match.group("days") or 0), hours=int(match.group("hours") or 0), minutes=int(match.group("minutes") or 0))
     if delta.total_seconds() <= 0:
         raise ValueError("Duration must be positive.")
+    if delta > timedelta(days=365):
+        raise ValueError("Duration cannot be longer than 365 days.")
     return delta
 
-
 def humanize_delta(delta: timedelta) -> str:
-    total_minutes = int(delta.total_seconds() // 60)
-    days, rem = divmod(total_minutes, 24 * 60)
-    hours, minutes = divmod(rem, 60)
+    total_minutes = max(0, int(delta.total_seconds() // 60))
+    days, remainder = divmod(total_minutes, 24 * 60)
+    hours, minutes = divmod(remainder, 60)
     parts = []
-    if days:
-        parts.append(f"{days}d")
-    if hours:
-        parts.append(f"{hours}h")
-    if minutes or not parts:
-        parts.append(f"{minutes}m")
+    if days: parts.append(f"{days}d")
+    if hours: parts.append(f"{hours}h")
+    if minutes or not parts: parts.append(f"{minutes}m")
     return " ".join(parts)
 
-
 def future_time(delta: timedelta) -> datetime:
-    return datetime.utcnow() + delta
+    return datetime.now(timezone.utc) + delta
